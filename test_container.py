@@ -24,7 +24,6 @@ from airflow.decorators import task
 
 with DAG(
     dag_id="example_kubernetes_decorator",
-    schedule=None,
     start_date=datetime(2021, 1, 1),
     tags=["example", "cncf", "kubernetes"],
     catchup=False,
