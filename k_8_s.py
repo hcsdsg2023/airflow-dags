@@ -18,7 +18,7 @@ dag = DAG(
 
 task = KubernetesPodOperator(
     namespace='test',
-    image="airflow-eks-docker-dev:latest",
+    image="debian",
     cmds=["bash", "-cx"],
     arguments=["echo", "10"],
     labels={"foo": "bar"},
