@@ -18,7 +18,7 @@ dag = DAG(
 
 task = KubernetesPodOperator(
     namespace='test',
-    image="debian",
+    image="public.ecr.aws/d3x7i4d9/debian",
     cmds=["bash", "-cx"],
     arguments=["echo", "10"],
     labels={"foo": "bar"},
