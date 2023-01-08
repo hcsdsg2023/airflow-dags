@@ -1,45 +1,70 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+from __future__ import annotations
+
+from datetime import datetime
+
 from airflow import DAG
-from airflow.operators.docker_operator import DockerOperator
-from airflow.operators.python_operator import PythonOperator
-from datetime import datetime, timedelta
+from airflow.decorators import task
 
-# Default arguments for the DAG
-default_args = {
-    'owner': 'me',
-    'start_date': datetime(2022, 1, 1),
-    'depends_on_past': False,
-    'retries': 1,
-    'retry_delay': timedelta(minutes=5)
-}
+with DAG(
+    dag_id="example_kubernetes_decorator",
+    schedule=None,
+    start_date=datetime(2021, 1, 1),
+    tags=["example", "cncf", "kubernetes"],
+    catchup=False,
+) as dag:
 
-# Create the DAG
-dag = DAG(
-    'my_dag_id',
-    default_args=default_args,
-    schedule_interval=timedelta(hours=1)
-)
+    # [START howto_operator_kubernetes]
+    @task.kubernetes(
+        image="python:3.8-slim-buster",
+        name="k8s_test",
+        namespace="default",
+        in_cluster=False,
+        config_file="/path/to/.kube/config",
+    )
+    def execute_in_k8s_pod():
+        import time
 
-# Task that runs a Docker container to add two numbers
-add_task = DockerOperator(
-    task_id='add_task',
-    image='python:latest',
-    api_version='auto',
-    auto_remove=True,
-    command='python -c "print(3+5)"',
-    dag=dag
-)
+        print("Hello from k8s pod")
+        time.sleep(2)
 
-# Task that multiplies the result by 2
-def multiply(**context):
-    result = context['task_instance'].xcom_pull(task_ids='add_task')
-    return result * 2
+    @task.kubernetes(image="python:3.8-slim-buster", namespace="default", in_cluster=False)
+    def print_pattern():
+        n = 5
+        for i in range(0, n):
+            # inner loop to handle number of columns
+            # values changing acc. to outer loop
+            for j in range(0, i + 1):
+                # printing stars
+                print("* ", end="")
 
-multiply_task = PythonOperator(
-    task_id='multiply_task',
-    python_callable=multiply,
-    provide_context=True,
-    dag=dag
-)
+            # ending line after each row
+            print("\r")
 
-# Set the order of the tasks
-add_task >> multiply_task
+    execute_in_k8s_pod_instance = execute_in_k8s_pod()
+    print_pattern_instance = print_pattern()
+
+    execute_in_k8s_pod_instance >> print_pattern_instance
+    # [END howto_operator_kubernetes]
+
+
+from tests.system.utils import get_test_run
+
+# Needed to run the example DAG with pytest (see: tests/system/README.md#run_via_pytest)
+test_run = get_test_run(dag)
